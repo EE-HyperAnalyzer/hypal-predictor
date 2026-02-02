@@ -82,12 +82,10 @@ class PredictorStream:
             last_candle = current_input[-1]
             pred_candle = Candle_OHLC(
                 name=last_candle.name,
-                unit=last_candle.unit,
                 open=pred[0],
                 high=pred[1],
                 low=pred[2],
                 close=pred[3],
-                timestamp=last_candle.timestamp + self._timeframe_s,
             )
             pred_horizont.append(pred_candle)
             current_input.popleft()
@@ -105,12 +103,10 @@ class PredictorStream:
 
             norm_candle = Candle_OHLC(
                 name=curr_candle.name,
-                unit=curr_candle.unit,
                 open=(curr_candle.open - c) / c,
                 high=(curr_candle.high - c) / c,
                 low=(curr_candle.low - c) / c,
                 close=(curr_candle.close - c) / c,
-                timestamp=curr_candle.timestamp,
             )
 
             result.append(norm_candle)
@@ -127,12 +123,10 @@ class PredictorStream:
 
             denorm_candle = Candle_OHLC(
                 name=curr_candle.name,
-                unit=curr_candle.unit,
                 open=c * curr_candle.open + c,
                 high=c * curr_candle.high + c,
                 low=c * curr_candle.low + c,
                 close=c * curr_candle.close + c,
-                timestamp=curr_candle.timestamp,
             )
 
             result.append(denorm_candle)
