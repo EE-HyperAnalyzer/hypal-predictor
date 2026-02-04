@@ -55,8 +55,8 @@ class PredictorStream:
         self._optimizer.zero_grad()
         y_norm_pred = self._model(x_vec_norm)
         loss = self._loss_fn(y_norm_pred, y_norm_true)
-        loss_val = self._loss_ema.update(loss.item())
-        print(loss_val)
+        # loss_val = self._loss_ema.update(loss.item())
+        # print(loss_val)
         loss.backward()
         self._optimizer.step()
 
