@@ -77,11 +77,7 @@ class PredictorStream:
         for i in range(self._output_horizont_size):
             x = torch.flatten(torch.FloatTensor([[c.open, c.high, c.low, c.close] for c in current_input]))
             pred = self._model(x)
-            # print(i, [c.close for c in current_input], pred[3].item())
-
-            last_candle = current_input[-1]
             pred_candle = Candle_OHLC(
-                name=last_candle.name,
                 open=pred[0],
                 high=pred[1],
                 low=pred[2],
@@ -102,7 +98,6 @@ class PredictorStream:
             c = max(abs(last_candle.close), 1e-12) * sign(last_candle.close)
 
             norm_candle = Candle_OHLC(
-                name=curr_candle.name,
                 open=(curr_candle.open - c) / c,
                 high=(curr_candle.high - c) / c,
                 low=(curr_candle.low - c) / c,
@@ -122,7 +117,6 @@ class PredictorStream:
             c = max(abs(last_candle.close), 1e-12) * sign(last_candle.close)
 
             denorm_candle = Candle_OHLC(
-                name=curr_candle.name,
                 open=c * curr_candle.open + c,
                 high=c * curr_candle.high + c,
                 low=c * curr_candle.low + c,

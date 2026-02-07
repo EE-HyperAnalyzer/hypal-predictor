@@ -1,6 +1,6 @@
 [project]
 name = "hypal-predictor"
-version = "0.0.0"
+version = "0.1.0"
 description = "Data predictor for HyperAnalyzer"
 readme = "README.md"
 authors = [
