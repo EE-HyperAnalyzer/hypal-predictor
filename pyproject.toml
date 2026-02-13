@@ -1,6 +1,6 @@
 [project]
 name = "hypal-predictor"
-version = "0.1.0"
+version = "0.1.1"
 description = "Data predictor for HyperAnalyzer"
 readme = "README.md"
 authors = [
@@ -11,6 +11,7 @@ dependencies = [
     "hypal-utils",
     "numpy>=2.4.1",
     "torch>=2.9.1",
+    "tqdm>=4.67.3",
 ]
 
 [dependency-groups]

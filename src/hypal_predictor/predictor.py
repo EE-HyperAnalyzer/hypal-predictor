@@ -1,12 +1,15 @@
-from collections import deque
 from dataclasses import dataclass
 
 import torch
+import tqdm
 from hypal_utils.candles import Candle_OHLC
-from numpy import sign
+from hypal_utils.sensor_data import SensorData
+from torch.utils.data import DataLoader
 
-from hypal_predictor.ema import EMA
+from hypal_predictor.dataset import TimeSeriesDataset
 from hypal_predictor.model import Model
+from hypal_predictor.normalizer import MinMaxNormalizer, Normalizer
+from hypal_predictor.utils import create_sequences, rollout
 
 
 @dataclass
@@ -23,106 +26,78 @@ class Gather(PredictResult): ...
 
 
 class PredictorStream:
-    _model: Model
-    _output_horizont_size: int
-    _timeframe_s: int
-    _loss_ema: EMA
+    model: Model
+    output_horizont_size: int
+    is_fitted: bool = False
+    scaler: Normalizer
 
-    def __init__(self, model: Model, output_horizont_size: int, timeframe_s: int):
-        self.buffer: deque[Candle_OHLC] = deque()
+    def __init__(self, model: Model, output_horizont_size: int):
+        self.model = model
+        self.output_horizont_size = output_horizont_size
 
-        self._model = model
-        self._optimizer = torch.optim.Adam(self._model.parameters())
-        self._loss_fn = torch.nn.MSELoss()
+    def fit(
+        self,
+        data: list[SensorData],
+        train_size: float = 0.8,
+        train_steps: int = 100,
+        batch_size: int = 32,
+        lr: float = 3e-3,
+    ):
+        candle_data: list[Candle_OHLC] = [d.candle for d in data]
 
-        self._output_horizont_size = output_horizont_size
-        self._timeframe_s = timeframe_s
-        self._loss_ema = EMA(0.9)
+        self.scaler = MinMaxNormalizer()
+        candle_scaled_data = self.scaler.fit_transform(candle_data)
 
-    def step(self, new_candle: Candle_OHLC) -> PredictResult:
-        self.buffer.append(new_candle)
+        n = len(candle_scaled_data)
+        train_size = int(n * train_size)
+        train_data = candle_scaled_data[:train_size]
+        test_data = candle_scaled_data[train_size:]
 
-        if len(self.buffer) < self._model.get_context_length() + 2:
-            return Gather()
+        X_train, y_train = create_sequences(data=train_data, inp_seq_len=self.model.get_context_length(), out_seq_len=1)
+        X_test, y_test = create_sequences(
+            data=test_data, inp_seq_len=self.model.get_context_length(), out_seq_len=self.output_horizont_size
+        )
 
-        # Online step
-        online_base_candle = self.buffer.popleft()
-        temp_vec_norm = self._normalize_candles(online_base_candle, list(self.buffer))
-        *x_vec_norm, y_norm_true = temp_vec_norm
-        x_vec_norm = torch.flatten(torch.FloatTensor([[c.open, c.high, c.low, c.close] for c in x_vec_norm]))
-        y_norm_true = torch.FloatTensor([y_norm_true.open, y_norm_true.high, y_norm_true.low, y_norm_true.close])
+        train_dataset = TimeSeriesDataset(X_train, y_train)
+        train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
 
-        self._optimizer.zero_grad()
-        y_norm_pred = self._model(x_vec_norm)
-        loss = self._loss_fn(y_norm_pred, y_norm_true)
-        # loss_val = self._loss_ema.update(loss.item())
-        # print(loss_val)
-        loss.backward()
-        self._optimizer.step()
+        test_dataset = TimeSeriesDataset(X_test, y_test)
+        test_dataloader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
 
-        # Predict step
-        base_candle, *input_horizont = list(self.buffer)
+        optimizer = torch.optim.Adam(self.model.parameters(), lr=lr)
+        loss_fn = torch.nn.MSELoss()
 
-        input_horizont_normalized = self._normalize_candles(base_candle, input_horizont)
-        predicted_horizont_normalized = self.predict(input_horizont_normalized)
-        predicted_horizont = self._denormalize_candles(base_candle, predicted_horizont_normalized)
+        train_pbar = tqdm.tqdm(range(train_steps), leave=False)
+        for epoch in train_pbar:
+            self.model.train()
+            for batch_X, batch_y in train_dataloader:
+                optimizer.zero_grad()
+                output = self.model(batch_X).unsqueeze(1)
+                loss = loss_fn(output, batch_y)
+                loss.backward()
+                optimizer.step()
+            train_pbar.set_description(f"Epoch {epoch + 1}, Loss: {loss.item():.5f}")
 
-        return Ok(predicted_horizont)
+        self.model.eval()
+        with torch.no_grad():
+            batch_loss = []
+            for batch_X, batch_y in test_dataloader:
+                y_pred = rollout(self.model, batch_X, self.output_horizont_size)
+                loss = loss_fn(y_pred, batch_y)
+                batch_loss.append(loss.item())
 
-    def predict(self, input_horizont: list[Candle_OHLC]) -> list[Candle_OHLC]:
-        assert len(input_horizont) == self._model.get_context_length()
-        current_input = deque(input_horizont)
-        pred_horizont = []
+        self.is_fitted = True
 
-        for i in range(self._output_horizont_size):
-            x = torch.flatten(torch.FloatTensor([[c.open, c.high, c.low, c.close] for c in current_input]))
-            pred = self._model(x)
-            pred_candle = Candle_OHLC(
-                open=pred[0],
-                high=pred[1],
-                low=pred[2],
-                close=pred[3],
+    def predict(self, data: list[Candle_OHLC]) -> list[Candle_OHLC]:
+        assert len(data) == self.model.get_context_length()
+        data_scaled = self.scaler.transform(data)
+        x = torch.tensor([[d.open, d.high, d.low, d.close] for d in data_scaled])
+        pred_horizont = rollout(self.model, x, self.output_horizont_size).detach().numpy()
+        pred_candles: list[Candle_OHLC] = [
+            Candle_OHLC(
+                open=pred_horizont[i][0], high=pred_horizont[i][1], low=pred_horizont[i][2], close=pred_horizont[i][3]
             )
-            pred_horizont.append(pred_candle)
-            current_input.popleft()
-            current_input.append(pred_candle)
-
-        return pred_horizont
-
-    @staticmethod
-    def _normalize_candles(base_candle: Candle_OHLC, candles: list[Candle_OHLC]) -> list[Candle_OHLC]:
-        result: list[Candle_OHLC] = []
-
-        last_candle = base_candle
-        for curr_candle in candles:
-            c = max(abs(last_candle.close), 1e-12) * sign(last_candle.close)
-
-            norm_candle = Candle_OHLC(
-                open=(curr_candle.open - c) / c,
-                high=(curr_candle.high - c) / c,
-                low=(curr_candle.low - c) / c,
-                close=(curr_candle.close - c) / c,
-            )
-
-            result.append(norm_candle)
-
-        return result
-
-    @staticmethod
-    def _denormalize_candles(base_candle: Candle_OHLC, candles: list[Candle_OHLC]) -> list[Candle_OHLC]:
-        result: list[Candle_OHLC] = []
-
-        last_candle = base_candle
-        for curr_candle in candles:
-            c = max(abs(last_candle.close), 1e-12) * sign(last_candle.close)
-
-            denorm_candle = Candle_OHLC(
-                open=c * curr_candle.open + c,
-                high=c * curr_candle.high + c,
-                low=c * curr_candle.low + c,
-                close=c * curr_candle.close + c,
-            )
-
-            result.append(denorm_candle)
-
+            for i in range(len(pred_horizont))
+        ]
+        result = self.scaler.reverse(pred_candles)
         return result
