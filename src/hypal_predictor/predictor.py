@@ -3,10 +3,10 @@ from dataclasses import dataclass
 import torch
 import tqdm
 from hypal_utils.candles import Candle_OHLC
-from hypal_utils.sensor_data import SensorData
 from torch.utils.data import DataLoader
 
 from hypal_predictor.dataset import TimeSeriesDataset
+from hypal_predictor.metrics import MAE, MSE, Metric
 from hypal_predictor.model import Model
 from hypal_predictor.normalizer import MinMaxNormalizer, Normalizer
 from hypal_predictor.utils import create_sequences, rollout
@@ -37,16 +37,15 @@ class PredictorStream:
 
     def fit(
         self,
-        data: list[SensorData],
+        data: list[Candle_OHLC],
         train_size: float = 0.8,
         train_steps: int = 100,
         batch_size: int = 32,
         lr: float = 3e-3,
-    ):
-        candle_data: list[Candle_OHLC] = [d.candle for d in data]
-
+        metrics: tuple[type[Metric], ...] = (MSE, MAE),
+    ) -> dict[str, list[float]]:
         self.scaler = MinMaxNormalizer()
-        candle_scaled_data = self.scaler.fit_transform(candle_data)
+        candle_scaled_data = self.scaler.fit_transform(data)
 
         n = len(candle_scaled_data)
         train_size = int(n * train_size)
@@ -78,15 +77,18 @@ class PredictorStream:
                 optimizer.step()
             train_pbar.set_description(f"Epoch {epoch + 1}, Loss: {loss.item():.5f}")
 
+        metric_values: dict[str, list[float]] = {}
         self.model.eval()
         with torch.no_grad():
-            batch_loss = []
             for batch_X, batch_y in test_dataloader:
                 y_pred = rollout(self.model, batch_X, self.output_horizont_size)
-                loss = loss_fn(y_pred, batch_y)
-                batch_loss.append(loss.item())
+                for metric in metrics:
+                    metric_values[metric.__name__] = metric_values.get(metric.__name__, []) + [
+                        metric(batch_y, y_pred).calculate()
+                    ]
 
         self.is_fitted = True
+        return metric_values
 
     def predict(self, data: list[Candle_OHLC]) -> list[Candle_OHLC]:
         assert len(data) == self.model.get_context_length()
