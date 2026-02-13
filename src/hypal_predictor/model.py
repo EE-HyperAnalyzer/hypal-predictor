@@ -36,7 +36,7 @@ class TorchModel(Model):
         self.batch_size = batch_size
         self.normalizer = MinMaxNormalizer()
 
-    def fit(self, x: list[Candle_OHLC]) -> "TorchModel":
+    def fit(self, x: list[Candle_OHLC], es_tol: float = 1e-5) -> "TorchModel":
         from hypal_predictor.utils import create_sequences
 
         x_norm = self.normalizer.fit_transform(x)
@@ -55,14 +55,20 @@ class TorchModel(Model):
         train_pbar = tqdm.tqdm(range(self.train_steps), leave=False)
         for epoch in train_pbar:
             self.model.train()
+            total_loss = 0.0
             for batch_X, batch_y in train_dataloader:
                 optimizer.zero_grad()
                 pb = self._process_batch(batch_X)
                 output = self.model(pb).unsqueeze(1)
                 loss = loss_fn(output, batch_y)
+                total_loss += loss.item()
                 loss.backward()
                 optimizer.step()
-            train_pbar.set_description(f"Epoch {epoch + 1}, Loss: {loss.item():.5f}")
+            train_pbar.set_description(f"Epoch {epoch + 1}, Loss: {total_loss:.5f}")
+
+            if total_loss < es_tol:
+                train_pbar.set_description("Early stopping")
+                break
 
         self.is_fitted = True
         return self
