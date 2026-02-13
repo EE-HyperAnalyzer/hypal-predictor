@@ -71,7 +71,6 @@ class PredictorStream:
             self.model.train()
             for batch_X, batch_y in train_dataloader:
                 optimizer.zero_grad()
-                print(batch_X.shape)
                 output = self.model(batch_X).unsqueeze(1)
                 loss = loss_fn(output, batch_y)
                 loss.backward()
