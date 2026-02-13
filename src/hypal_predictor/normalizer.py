@@ -17,7 +17,7 @@ class Normalizer(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def reverse(self, data: list[Candle_OHLC]) -> list[Candle_OHLC]:
+    def reverse(self, candle: Candle_OHLC) -> Candle_OHLC:
         raise NotImplementedError
 
     def fit_transform(self, data: list[Candle_OHLC]) -> list[Candle_OHLC]:
@@ -57,23 +57,17 @@ class MinMaxNormalizer(Normalizer):
 
         return result
 
-    def reverse(self, data: list[Candle_OHLC]) -> list[Candle_OHLC]:
+    def reverse(self, candle: Candle_OHLC) -> Candle_OHLC:
         if not self._is_fitted:
             raise ValueError("Normalizer not fitted")
 
         assert self.min_value is not None, "min_value is None"
         assert self.max_value is not None, "max_value is None"
 
-        result = []
         delta = self.max_value - self.min_value
-        for candle in data:
-            result.append(
-                Candle_OHLC(
-                    open=candle.open * delta + self.min_value,
-                    high=candle.high * delta + self.min_value,
-                    low=candle.low * delta + self.min_value,
-                    close=candle.close * delta + self.min_value,
-                )
-            )
-
-        return result
+        return Candle_OHLC(
+            open=candle.open * delta + self.min_value,
+            high=candle.high * delta + self.min_value,
+            low=candle.low * delta + self.min_value,
+            close=candle.close * delta + self.min_value,
+        )
