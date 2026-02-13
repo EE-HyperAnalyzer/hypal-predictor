@@ -71,6 +71,7 @@ class PredictorStream:
             self.model.train()
             for batch_X, batch_y in train_dataloader:
                 optimizer.zero_grad()
+                print(batch_X.shape)
                 output = self.model(batch_X).unsqueeze(1)
                 loss = loss_fn(output, batch_y)
                 loss.backward()
@@ -85,8 +86,6 @@ class PredictorStream:
 
                 y_pred_unbatched = y_pred.view(-1, y_pred.shape[-1])
                 batch_y_unbatched = batch_y.view(-1, batch_y.shape[-1])
-
-                print(y_pred_unbatched.shape, batch_y_unbatched.shape)
 
                 for metric in metrics:
                     metric_values[metric.__name__] = metric_values.get(metric.__name__, []) + [
