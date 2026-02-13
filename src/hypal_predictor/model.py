@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 
+import numpy as np
 import torch
 import tqdm
 from hypal_utils.candles import Candle_OHLC
@@ -55,18 +56,20 @@ class TorchModel(Model):
         train_pbar = tqdm.tqdm(range(self.train_steps), leave=False)
         for epoch in train_pbar:
             self.model.train()
-            total_loss = 0.0
+            total_loss = []
             for batch_X, batch_y in train_dataloader:
                 optimizer.zero_grad()
                 pb = self._process_batch(batch_X)
                 output = self.model(pb).unsqueeze(1)
                 loss = loss_fn(output, batch_y)
-                total_loss += loss.item()
+                total_loss.append(loss.item())
                 loss.backward()
                 optimizer.step()
-            train_pbar.set_description(f"Epoch {epoch + 1}, Loss: {total_loss:.5f}")
 
-            if total_loss < es_tol:
+            loss_mean = np.mean(total_loss)
+            train_pbar.set_description(f"Epoch {epoch + 1}, Loss: {loss_mean:.5f}")
+
+            if loss_mean < es_tol:
                 train_pbar.set_description("Early stopping")
                 break
 
