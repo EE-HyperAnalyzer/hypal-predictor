@@ -82,6 +82,7 @@ class PredictorStream:
         with torch.no_grad():
             for batch_X, batch_y in test_dataloader:
                 y_pred = rollout(self.model, batch_X, self.output_horizont_size)
+                print(y_pred.shape, batch_y.shape)
                 for metric in metrics:
                     metric_values[metric.__name__] = metric_values.get(metric.__name__, []) + [
                         metric(batch_y, y_pred).calculate()
