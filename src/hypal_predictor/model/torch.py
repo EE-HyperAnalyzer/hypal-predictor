@@ -19,13 +19,17 @@ class TorchModel(Model):
         train_steps: int = 10,
         batch_size: int = 32,
         normalizer: Normalizer = MinMaxNormalizer(),
+        device: str = "cuda",
     ):
         super().__init__(normalizer=normalizer, input_horizon_length=input_horizon_length)
         self.model = model
         self.train_steps = train_steps
         self.batch_size = batch_size
+        self.device = device
 
     def fit(self, x: list[Candle_OHLC], es_tol: float = 1e-5) -> "TorchModel":
+        self.model.to(self.device)
+        self.model.train()
 
         x_norm = self._normalizer.fit_transform(x)
 
@@ -45,6 +49,9 @@ class TorchModel(Model):
             self.model.train()
             total_loss = []
             for batch_X, batch_y in train_dataloader:
+                batch_X = batch_X.to(self.device)
+                batch_y = batch_y.to(self.device)
+
                 optimizer.zero_grad()
                 pb = self._process_batch(batch_X)
                 output = self.model(pb).unsqueeze(1)
@@ -61,6 +68,8 @@ class TorchModel(Model):
                 break
 
         self.is_fitted = True
+        self.model.eval()
+        self.model.cpu()
         return self
 
     @staticmethod
