@@ -18,13 +18,10 @@ class LinearModel(TorchModel):
         if len(x) != self.get_context_length():
             raise ValueError("Input length does not match model context length")
 
-        x_norm = self.normalizer.transform(x)
+        x_norm = self._normalizer.transform(x)
         x_vec = torch.tensor(np.array([candle_to_array(candle) for candle in x_norm]), dtype=torch.float32).view(-1)
         res = self.model(x_vec).detach()
-        return self.normalizer.reverse(Candle_OHLC(open=res[0], high=res[1], low=res[2], close=res[3]))
-
-    def get_context_length(self) -> int:
-        return self.input_size
+        return self._normalizer.reverse(Candle_OHLC(open=res[0], high=res[1], low=res[2], close=res[3]))
 
     @staticmethod
     def _process_batch(x: torch.Tensor) -> torch.Tensor:

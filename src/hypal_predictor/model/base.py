@@ -13,13 +13,13 @@ class Model(ABC):
         TRAINING = auto()
         READY = auto()
 
-    _input_horizon_lenght: int
+    _input_horizon_length: int
     _normalizer: Normalizer
     _state: ModelState
 
-    def __init__(self, normalizer: Normalizer, input_horizon_lenght: int):
+    def __init__(self, normalizer: Normalizer, input_horizon_length: int):
         self._normalizer = normalizer
-        self._input_horizon_lenght = input_horizon_lenght
+        self._input_horizon_length = input_horizon_length
         self._state = self.ModelState.GATHERING
 
     @abstractmethod
@@ -30,9 +30,8 @@ class Model(ABC):
     def predict(self, x: list[Candle_OHLC]) -> Candle_OHLC:
         raise NotImplementedError
 
-    @abstractmethod
     def get_context_length(self) -> int:
-        raise NotImplementedError
+        return self._input_horizon_length
 
     def get_state(self) -> ModelState:
         return self._state

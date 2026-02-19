@@ -3,27 +3,21 @@ from catboost import CatBoostRegressor
 from hypal_utils.candles import Candle_OHLC
 
 from hypal_predictor.model import Model
-from hypal_predictor.normalizer import MinMaxNormalizer, Normalizer
+from hypal_predictor.normalizer import Normalizer
 from hypal_predictor.utils import candle_to_array, create_sequences
 
 
 class BoostingModel(Model):
-    normalizer: Normalizer
-    input_horizont: int
-
-    def __init__(self, input_horizont: int, **kwargs):
-        super().__init__()
+    def __init__(self, input_horizon_length: int, normalizer: Normalizer):
+        super().__init__(normalizer=normalizer, input_horizon_length=input_horizon_length)
         self.model = CatBoostRegressor(
             loss_function="MultiRMSE",
             objective="MultiRMSE",
             eval_metric="MultiRMSE",
-            **kwargs,
         )
-        self.normalizer = MinMaxNormalizer()
-        self.input_horizont = input_horizont
 
     def fit(self, x: list[Candle_OHLC]) -> "BoostingModel":
-        x_norm = self.normalizer.fit_transform(x)
+        x_norm = self._normalizer.fit_transform(x)
         x_train_seq, y_train_seq = create_sequences(
             data=x_norm, inp_seq_len=self.get_context_length(), out_seq_len=1, flatten=True
         )
@@ -37,10 +31,7 @@ class BoostingModel(Model):
         if len(x) != self.get_context_length():
             raise ValueError("Input length does not match model context length")
 
-        x_norm = self.normalizer.transform(x)
+        x_norm = self._normalizer.transform(x)
         x_mat = np.array([candle_to_array(candle) for candle in x_norm]).reshape(-1)
         res = self.model.predict(x_mat)
-        return self.normalizer.reverse(Candle_OHLC(open=res[0], high=res[1], low=res[2], close=res[3]))
-
-    def get_context_length(self) -> int:
-        return self.input_horizont
+        return self._normalizer.reverse(Candle_OHLC(open=res[0], high=res[1], low=res[2], close=res[3]))

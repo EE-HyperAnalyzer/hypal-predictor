@@ -17,13 +17,13 @@ class ModelManager:
         self._model_id = model_id
         self._model_factory = model_t
 
-    def add_timeframe(self, timeframe: str, normalizer: Normalizer, input_horizon_lenght: int):
+    def add_timeframe(self, timeframe: str, normalizer: Normalizer, input_horizon_length: int):
         timeframe_sec = timeframe_to_sec(timeframe)
         if timeframe_sec in self._timeframe_to_model:
             raise RuntimeError("You have passed to different timeframes with the same amount of delta-seconds")
 
         self._timeframe_to_model[timeframe_sec] = self._model_factory(
-            normalizer=normalizer, input_horizon_lenght=input_horizon_lenght
+            normalizer=normalizer, input_horizon_length=input_horizon_length
         )
 
     def get_timeframes(self) -> list[int]:

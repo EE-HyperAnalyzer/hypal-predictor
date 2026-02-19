@@ -6,32 +6,28 @@ from tqdm import tqdm
 
 from hypal_predictor.dataset import TimeSeriesDataset
 from hypal_predictor.normalizer import MinMaxNormalizer, Normalizer
+from hypal_predictor.utils import create_sequences
 
 from .base import Model
 
 
 class TorchModel(Model):
-    normalizer: Normalizer
-
     def __init__(
         self,
         model: torch.nn.Module,
-        input_size: int,
+        input_horizon_length: int,
         train_steps: int = 10,
         batch_size: int = 32,
         normalizer: Normalizer = MinMaxNormalizer(),
     ):
-        super().__init__()
+        super().__init__(normalizer=normalizer, input_horizon_length=input_horizon_length)
         self.model = model
-        self.input_size = input_size
         self.train_steps = train_steps
         self.batch_size = batch_size
-        self.normalizer = normalizer
 
     def fit(self, x: list[Candle_OHLC], es_tol: float = 1e-5) -> "TorchModel":
-        from hypal_predictor.utils import create_sequences
 
-        x_norm = self.normalizer.fit_transform(x)
+        x_norm = self._normalizer.fit_transform(x)
 
         X_train, y_train = create_sequences(data=x_norm, inp_seq_len=self.get_context_length(), out_seq_len=1)
         X_train = torch.tensor(X_train, dtype=torch.float32)
