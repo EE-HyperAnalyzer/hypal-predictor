@@ -39,3 +39,20 @@ def rollout(model: Model, x0: list[Candle_OHLC], k: int) -> list[Candle_OHLC]:
         x.append(y)
 
     return preds
+
+
+def timeframe_to_sec(timeframe: str) -> int:
+    assert timeframe.count(":") == 1
+
+    n, t = timeframe.split(":")
+    n = int(n)
+
+    match t:
+        case "s":
+            return n * 1
+        case "m":
+            return n * 60
+        case "h":
+            return n * 3600
+        case _:
+            raise RuntimeError(f"Unknown timeframe: {t}")

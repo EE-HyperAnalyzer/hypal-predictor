@@ -1,41 +1,32 @@
-from abc import ABC, abstractmethod
-
 import numpy as np
 import torch
-import tqdm
 from hypal_utils.candles import Candle_OHLC
 from torch.utils.data import DataLoader
+from tqdm import tqdm
 
 from hypal_predictor.dataset import TimeSeriesDataset
 from hypal_predictor.normalizer import MinMaxNormalizer, Normalizer
 
-
-class Model(ABC):
-    is_fitted: bool = False
-
-    @abstractmethod
-    def fit(self, x: list[Candle_OHLC]) -> "Model":
-        raise NotImplementedError
-
-    @abstractmethod
-    def predict(self, x: list[Candle_OHLC]) -> Candle_OHLC:
-        raise NotImplementedError
-
-    @abstractmethod
-    def get_context_length(self) -> int:
-        raise NotImplementedError
+from .base import Model
 
 
 class TorchModel(Model):
     normalizer: Normalizer
 
-    def __init__(self, model: torch.nn.Module, input_size: int, train_steps: int = 10, batch_size: int = 32):
+    def __init__(
+        self,
+        model: torch.nn.Module,
+        input_size: int,
+        train_steps: int = 10,
+        batch_size: int = 32,
+        normalizer: Normalizer = MinMaxNormalizer(),
+    ):
         super().__init__()
         self.model = model
         self.input_size = input_size
         self.train_steps = train_steps
         self.batch_size = batch_size
-        self.normalizer = MinMaxNormalizer()
+        self.normalizer = normalizer
 
     def fit(self, x: list[Candle_OHLC], es_tol: float = 1e-5) -> "TorchModel":
         from hypal_predictor.utils import create_sequences
@@ -53,7 +44,7 @@ class TorchModel(Model):
         optimizer = torch.optim.Adam(self.model.parameters())
         loss_fn = torch.nn.MSELoss()
 
-        train_pbar = tqdm.tqdm(range(self.train_steps), leave=False)
+        train_pbar = tqdm(range(self.train_steps), leave=False)
         for epoch in train_pbar:
             self.model.train()
             total_loss = []
