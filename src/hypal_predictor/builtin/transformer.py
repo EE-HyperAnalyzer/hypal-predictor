@@ -4,6 +4,7 @@ import torch.nn as nn
 from hypal_utils.candles import Candle_OHLC
 
 from hypal_predictor.model import TorchModel
+from hypal_predictor.normalizer import MinMaxNormalizer, Normalizer
 from hypal_predictor.utils import candle_to_array
 
 
@@ -41,9 +42,23 @@ class TimeSeriesTransformer(nn.Module):
 
 
 class TimeSeriesTransformerModel(TorchModel):
-    def __init__(self, input_size: int, train_steps: int = 10, batch_size: int = 32):
+    def __init__(
+        self,
+        input_size: int,
+        train_steps: int = 10,
+        batch_size: int = 32,
+        normalizer: Normalizer = MinMaxNormalizer(),
+        device: str = "cpu",
+    ):
         self.model = TimeSeriesTransformer(num_features=4)
-        super().__init__(self.model, input_size, train_steps, batch_size)
+        super().__init__(
+            model=self.model,
+            input_horizon_length=input_size,
+            train_steps=train_steps,
+            batch_size=batch_size,
+            normalizer=normalizer,
+            device=device,
+        )
 
     def predict(self, x: list[Candle_OHLC]) -> Candle_OHLC:
         if not self.is_fitted:

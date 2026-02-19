@@ -5,7 +5,7 @@ from torch.utils.data import DataLoader
 from tqdm import tqdm
 
 from hypal_predictor.dataset import TimeSeriesDataset
-from hypal_predictor.normalizer import MinMaxNormalizer, Normalizer
+from hypal_predictor.normalizer import Normalizer
 from hypal_predictor.utils import create_sequences
 
 from .base import Model
@@ -16,10 +16,10 @@ class TorchModel(Model):
         self,
         model: torch.nn.Module,
         input_horizon_length: int,
-        train_steps: int = 10,
-        batch_size: int = 32,
-        normalizer: Normalizer = MinMaxNormalizer(),
-        device: str = "cuda",
+        train_steps: int,
+        batch_size: int,
+        normalizer: Normalizer,
+        device: str,
     ):
         super().__init__(normalizer=normalizer, input_horizon_length=input_horizon_length)
         self.model = model
