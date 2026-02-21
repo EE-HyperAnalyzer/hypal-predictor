@@ -3,9 +3,9 @@ import torch
 import torch.nn as nn
 from hypal_utils.candles import Candle_OHLC
 
-from src.model import TorchModel
-from src.normalizer import MinMaxNormalizer, Normalizer
-from src.utils import candle_to_array
+from hypal_predictor.model import TorchModel
+from hypal_predictor.normalizer import MinMaxNormalizer, Normalizer
+from hypal_predictor.utils import candle_to_array
 
 
 class PositionalEncoding(nn.Module):

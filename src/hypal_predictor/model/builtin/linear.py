@@ -3,19 +3,19 @@ import torch
 import torch.nn as nn
 from hypal_utils.candles import Candle_OHLC
 
-from src.model import TorchModel
-from src.normalizer import MinMaxNormalizer, Normalizer
-from src.utils import candle_to_array
+from hypal_predictor.model import TorchModel
+from hypal_predictor.normalizer import MinMaxNormalizer, Normalizer
+from hypal_predictor.utils import candle_to_array
 
 
 class LinearModel(TorchModel):
     def __init__(
         self,
         input_horizon_length: int,
-        train_steps: int = 10,
+        train_steps: int = 100,
         batch_size: int = 32,
         normalizer: Normalizer = MinMaxNormalizer(),
-        device: str = "cpu",
+        device: str = "cuda",
     ):
         self.model = nn.Sequential(nn.Linear(input_horizon_length * 4, 4))
         super().__init__(

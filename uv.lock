@@ -309,7 +309,7 @@ wheels = [
 [[package]]
 name = "hypal-predictor"
 version = "0.2.0"
-source = { virtual = "." }
+source = { editable = "." }
 dependencies = [
     { name = "catboost" },
     { name = "celery" },

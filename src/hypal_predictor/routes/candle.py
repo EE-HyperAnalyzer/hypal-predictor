@@ -3,7 +3,8 @@ from fastapi.routing import APIRouter
 from hypal_utils.logger import log_info
 from hypal_utils.sensor_data import SensorData
 
-from src.model_m import get_model_manager
+from hypal_predictor.model_m import get_model_manager
+from hypal_predictor.timeframe import Timeframe
 
 router = APIRouter(prefix="/candle", tags=["Candle"])
 
@@ -18,13 +19,11 @@ async def websocket_endpoint(websocket: WebSocket):
             raw_json_data = await websocket.receive_json()
             sensor_data = SensorData(**raw_json_data)
 
-            # log_info(f"recv: {sensor_data}")
-
             id_ = f"{sensor_data.source}:{sensor_data.sensor}:{sensor_data.axis}"
             log_info(id_)
             if id_ not in model_manager.models:
                 log_info(f"Added new timeframe for: {id_}")
-                model_manager.add_timeframe(sensor_id=id_, timeframe="1:s")
+                model_manager.add_timeframe(sensor_id=id_, timeframe=Timeframe.from_str("1:s"))
 
             log_info(f"Consume!: {id_}")
             model_manager.consume(sensor_data)

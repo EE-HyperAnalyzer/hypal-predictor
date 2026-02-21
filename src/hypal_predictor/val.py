@@ -1,9 +1,9 @@
 from hypal_utils.candles import Candle_OHLC
 
-from src.metrics.metrics import MAE, MSE
-from src.model.base import Model
-from src.utils import rollout
-from src.utils.utils import create_sequences
+from hypal_predictor.metrics.metrics import MAE, MSE
+from hypal_predictor.model.base import Model
+from hypal_predictor.utils import rollout
+from hypal_predictor.utils.utils import create_sequences
 
 
 def val_model(model: Model, data: list[Candle_OHLC], out_horizont: int) -> dict[str, list[float]]:

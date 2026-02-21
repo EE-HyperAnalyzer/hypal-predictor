@@ -5,7 +5,3 @@ __pycache__
 .ruff_cache
 .pytest_cache
 catboost_info
-
-# Databags
-databags/*
-!databags/.gitkeep

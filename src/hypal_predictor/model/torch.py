@@ -5,9 +5,9 @@ from torch.optim import lr_scheduler
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
-from src.dataset import TimeSeriesDataset
-from src.normalizer import Normalizer
-from src.utils import create_sequences
+from hypal_predictor.dataset import TimeSeriesDataset
+from hypal_predictor.normalizer import Normalizer
+from hypal_predictor.utils import create_sequences
 
 from .base import Model
 

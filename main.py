@@ -2,7 +2,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
-from src.routes.candle import router as candle_router
+from hypal_predictor.routes.candle import router as candle_router
 
 
 @asynccontextmanager
@@ -23,6 +23,6 @@ async def ping():
 if __name__ == "__main__":
     import uvicorn
 
-    from src import HOST_ADDRESS, HOST_PORT
+    from hypal_predictor import HOST_ADDRESS, HOST_PORT
 
     uvicorn.run(app, host=HOST_ADDRESS, port=HOST_PORT)

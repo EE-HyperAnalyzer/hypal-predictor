@@ -1,0 +1,3 @@
+# Databags
+databags/*
+!databags/.gitkeep
