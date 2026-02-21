@@ -3,7 +3,7 @@ from collections import deque
 import numpy as np
 from hypal_utils.candles import Candle_OHLC
 
-from hypal_predictor.model import Model
+from src.model import Model
 
 
 def create_sequences(

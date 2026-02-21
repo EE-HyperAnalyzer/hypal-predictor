@@ -2,9 +2,9 @@ import numpy as np
 from catboost import CatBoostRegressor
 from hypal_utils.candles import Candle_OHLC
 
-from hypal_predictor.model import Model
-from hypal_predictor.normalizer import Normalizer
-from hypal_predictor.utils import candle_to_array, create_sequences
+from src.model import Model
+from src.normalizer import Normalizer
+from src.utils import candle_to_array, create_sequences
 
 
 class BoostingModel(Model):
@@ -21,7 +21,7 @@ class BoostingModel(Model):
         x_train_seq, y_train_seq = create_sequences(
             data=x_norm, inp_seq_len=self.get_context_length(), out_seq_len=1, flatten=True
         )
-        self.model.fit(x_train_seq, y_train_seq)
+        self.model.fit(x_train_seq, y_train_seq, verbose=False)
         self.is_fitted = True
         return self
 

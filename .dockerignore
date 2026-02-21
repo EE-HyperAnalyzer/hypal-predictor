@@ -6,6 +6,5 @@ __pycache__
 .pytest_cache
 catboost_info
 
-# Databags
-databags/*
-!databags/.gitkeep
+# Experiments
+src/experiments

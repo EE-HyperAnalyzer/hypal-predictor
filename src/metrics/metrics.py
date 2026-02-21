@@ -4,7 +4,7 @@ from dataclasses import dataclass
 import numpy as np
 from hypal_utils.candles import Candle_OHLC
 
-from hypal_predictor.utils import candle_to_array
+from src.utils import candle_to_array
 
 
 @dataclass

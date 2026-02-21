@@ -4,7 +4,7 @@ from enum import Enum, auto
 from hypal_utils.candles import Candle_OHLC
 from hypal_utils.logger import log_info
 
-from hypal_predictor.normalizer import Normalizer
+from src.normalizer import Normalizer
 
 
 class Model(ABC):

@@ -1,12 +1,13 @@
 import numpy as np
 import torch
 from hypal_utils.candles import Candle_OHLC
+from torch.optim import lr_scheduler
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
-from hypal_predictor.dataset import TimeSeriesDataset
-from hypal_predictor.normalizer import Normalizer
-from hypal_predictor.utils import create_sequences
+from src.dataset import TimeSeriesDataset
+from src.normalizer import Normalizer
+from src.utils import create_sequences
 
 from .base import Model
 
@@ -43,6 +44,7 @@ class TorchModel(Model):
         self.model.train()
         optimizer = torch.optim.Adam(self.model.parameters())
         loss_fn = torch.nn.MSELoss()
+        lr_s = lr_scheduler.ExponentialLR(optimizer=optimizer, gamma=0.95)
 
         train_pbar = tqdm(range(self.train_steps), leave=False)
         for epoch in train_pbar:
@@ -66,6 +68,8 @@ class TorchModel(Model):
             if loss_mean < es_tol:
                 train_pbar.set_description("Early stopping")
                 break
+
+            lr_s.step()
 
         self.is_fitted = True
         self.model.eval()
