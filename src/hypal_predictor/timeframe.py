@@ -28,3 +28,7 @@ class Timeframe:
         timeframe_n = int(timeframe_n)
         assert timeframe_det in ["s", "m", "h", "d"]
         return Timeframe(num=timeframe_n, det=timeframe_det)  # ty:ignore[invalid-argument-type]
+
+    @classmethod
+    def default(cls) -> "Timeframe":
+        return cls(num=1, det="s")

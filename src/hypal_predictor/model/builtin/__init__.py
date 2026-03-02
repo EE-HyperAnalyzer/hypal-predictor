@@ -1,5 +1,7 @@
-from .boosting import BoostingModel
-from .linear import LinearModel
-from .transformer import TimeSeriesTransformerModel
+from .catboost_regressor import CatBoostRegressorModel
+from .linear_regression import LinearRegressionModel
 
-__all__ = ["LinearModel", "TimeSeriesTransformerModel", "BoostingModel"]
+__all__ = [
+    "CatBoostRegressorModel",
+    "LinearRegressionModel",
+]

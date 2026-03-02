@@ -13,6 +13,9 @@ dependencies = [
     "fastapi>=0.129.0",
     "hypal-utils",
     "numpy>=2.4.1",
+    "scikit-learn>=1.8.0",
+    "setuptools==81.0.0",
+    "tensorboard>=2.20.0",
     "torch>=2.9.1",
     "tqdm>=4.67.3",
     "uvicorn>=0.41.0",
@@ -25,6 +28,12 @@ dev = [
     "pytest>=9.0.2",
     "ruff>=0.14.10",
     "ty>=0.0.8",
+]
+
+[project.optional-dependencies]
+exp = [
+    "plotly>=6.5.2",
+    "kaleido>=1.2.0",
 ]
 
 [tool.uv.sources]
