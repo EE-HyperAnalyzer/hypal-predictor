@@ -9,12 +9,17 @@ authors = [
 requires-python = ">=3.13,<3.14"
 dependencies = [
     "catboost>=1.2.8",
-    "celery>=5.6.2",
+    "aiosqlite>=0.21.0",
+    "celery[redis]>=5.6.2",
     "fastapi>=0.129.0",
     "hypal-utils",
+    "httpx>=0.28.0",
     "numpy>=2.4.1",
+    "pydantic-settings>=2.10.0",
+    "redis>=6.2.0",
     "scikit-learn>=1.8.0",
     "setuptools==81.0.0",
+    "sqlalchemy[asyncio]>=2.0.0",
     "tensorboard>=2.20.0",
     "torch>=2.9.1",
     "tqdm>=4.67.3",

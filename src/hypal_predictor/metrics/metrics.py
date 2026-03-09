@@ -1,38 +1,40 @@
-from abc import ABC, abstractmethod
 from dataclasses import dataclass
-
-import numpy as np
-from hypal_utils.candles import Candle_OHLC
-
-from hypal_predictor.utils import candle_to_array
 
 
 @dataclass
-class Metric(ABC):
-    y_true: list[Candle_OHLC]
-    y_pred: list[Candle_OHLC]
+class RegressionMetrics:
+    r2: float = 0
+    mse: float = 0
+    mae: float = 0
 
-    def __post_init__(self):
-        assert len(self.y_true) == len(self.y_pred), "y_true and y_pred must have the same length"
 
-    @abstractmethod
-    def calculate(self) -> float:
-        raise NotImplementedError
+@dataclass
+class ClassificationMetrics:
+    critical_detection_precision: float = 0
+    critical_detection_recall: float = 0
+    critical_detection_f1: float = 0
+    critical_undetection_precision: float = 0
+    critical_undetection_recall: float = 0
+    critical_undetection_f1: float = 0
+
+    def f2(self, k: float = 0.5) -> float:
+        assert k >= 0 and k <= 1, "k must be between 0 and 1"
+        return k * self.critical_detection_f1 + (1 - k) * self.critical_undetection_f1
 
     @property
-    def y_true_np(self) -> np.ndarray:
-        return np.array([candle_to_array(c) for c in self.y_true])
+    def f2_025(self) -> float:
+        return self.f2(k=0.25)
 
     @property
-    def y_pred_np(self) -> np.ndarray:
-        return np.array([candle_to_array(c) for c in self.y_pred])
+    def f2_050(self) -> float:
+        return self.f2(k=0.50)
+
+    @property
+    def f2_075(self) -> float:
+        return self.f2(k=0.75)
 
 
-class MAE(Metric):
-    def calculate(self) -> float:
-        return float(np.abs(self.y_true_np[:, 3] - self.y_pred_np[:, 3]).mean())
-
-
-class MSE(Metric):
-    def calculate(self) -> float:
-        return float(((self.y_true_np[:, 3] - self.y_pred_np[:, 3]) ** 2).mean())
+@dataclass
+class Metrics:
+    regression: RegressionMetrics
+    classification: ClassificationMetrics

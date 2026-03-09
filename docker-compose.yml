@@ -1,0 +1,114 @@
+services:
+  redis:
+    image: redis:7-alpine
+    container_name: hypal-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: hypal-api
+    restart: unless-stopped
+    ports:
+      - "${HOST_PORT:-10000}:${HOST_PORT:-10000}"
+    volumes:
+      - models_data:/app/models
+      - db_data:/app/db
+    environment:
+      HOST_ADDRESS: "0.0.0.0"
+      HOST_PORT: "${HOST_PORT:-10000}"
+      REDIS_URL: "redis://redis:6379/0"
+      REDIS_RESULT_URL: "redis://redis:6379/1"
+      DATABASE_URL: "sqlite+aiosqlite:////app/db/hypal.db"
+      MODELS_DIR: "/app/models"
+      MAX_PARALLEL_TRAINING: "${MAX_PARALLEL_TRAINING:-2}"
+      MAX_LOADED_MODELS: "${MAX_LOADED_MODELS:-10}"
+      MODEL_IDLE_TIMEOUT_S: "${MODEL_IDLE_TIMEOUT_S:-3600}"
+      DEFAULT_MODEL_TYPE: "${DEFAULT_MODEL_TYPE:-linear}"
+      LOG_LEVEL: "${LOG_LEVEL:-INFO}"
+      CORE_API_TIMEOUT_S: "${CORE_API_TIMEOUT_S:-10}"
+    depends_on:
+      redis:
+        condition: service_healthy
+    command: ["uv", "run", "python", "main.py"]
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:${HOST_PORT:-10000}/ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  celery-training:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: hypal-celery-training
+    restart: unless-stopped
+    volumes:
+      - models_data:/app/models
+      - db_data:/app/db
+    environment:
+      REDIS_URL: "redis://redis:6379/0"
+      REDIS_RESULT_URL: "redis://redis:6379/1"
+      DATABASE_URL: "sqlite+aiosqlite:////app/db/hypal.db"
+      MODELS_DIR: "/app/models"
+      MAX_PARALLEL_TRAINING: "${MAX_PARALLEL_TRAINING:-2}"
+      DEFAULT_MODEL_TYPE: "${DEFAULT_MODEL_TYPE:-linear}"
+      LOG_LEVEL: "${LOG_LEVEL:-INFO}"
+    depends_on:
+      redis:
+        condition: service_healthy
+    command:
+      - uv
+      - run
+      - celery
+      - -A
+      - hypal_predictor.tasks.app:celery_app
+      - worker
+      - --queues=training
+      - --concurrency=${MAX_PARALLEL_TRAINING:-2}
+      - --loglevel=${LOG_LEVEL:-info}
+      - --hostname=training@%h
+
+  celery-notify:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: hypal-celery-notify
+    restart: unless-stopped
+    environment:
+      REDIS_URL: "redis://redis:6379/0"
+      REDIS_RESULT_URL: "redis://redis:6379/1"
+      DATABASE_URL: "sqlite+aiosqlite:////app/db/hypal.db"
+      LOG_LEVEL: "${LOG_LEVEL:-INFO}"
+      CORE_API_TIMEOUT_S: "${CORE_API_TIMEOUT_S:-10}"
+    depends_on:
+      redis:
+        condition: service_healthy
+    command:
+      - uv
+      - run
+      - celery
+      - -A
+      - hypal_predictor.tasks.app:celery_app
+      - worker
+      - --queues=notify
+      - --concurrency=4
+      - --loglevel=${LOG_LEVEL:-info}
+      - --hostname=notify@%h
+
+volumes:
+  redis_data:
+  models_data:
+  db_data:

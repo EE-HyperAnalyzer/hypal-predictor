@@ -1,8 +1,11 @@
+# Databags
 databags/*
 !databags/.gitkeep
 
+# Datasets
 datasets/*
 !datasets/.gitkeep
 
+# Results
 results/*
 !results/.gitkeep
