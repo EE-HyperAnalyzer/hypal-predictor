@@ -1,6 +1,5 @@
 import json
 import logging
-from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -25,26 +24,18 @@ async def upsert_config(
     session: AsyncSession = Depends(get_session),
 ):
     """Создаёт или обновляет конфигурацию сенсора. Регистрирует буферы."""
-    for tf in body.timeframes:
+    for tf in body.timeframes.keys():
         try:
             Timeframe.from_str(tf)
         except Exception:
             raise HTTPException(status_code=422, detail=f"Invalid timeframe: {tf!r}")
 
-    now = datetime.now(tz=timezone.utc)
     record = await sc_repo.upsert(
         session=session,
         source=source,
         sensor=sensor,
         axis=axis,
         timeframes=json.dumps(body.timeframes),
-        input_horizon=body.input_horizon,
-        output_horizon=body.output_horizon,
-        rollout_multiplier=body.rollout_multiplier,
-        num_train_samples=body.num_train_samples,
-        model_type=body.model_type,
-        core_api_url=body.core_api_url,
-        updated_at=now,
     )
 
     registry = get_registry()
@@ -52,21 +43,14 @@ async def upsert_config(
         source=source,
         sensor=sensor,
         axis=axis,
-        timeframes=body.timeframes,
-        num_train_samples=body.num_train_samples,
+        timeframe_settings=body.timeframes,
     )
 
     return SensorConfigResponse(
         source=source,
         sensor=sensor,
         axis=axis,
-        timeframes=body.timeframes,
-        input_horizon=record.input_horizon,
-        output_horizon=record.output_horizon,
-        rollout_multiplier=record.rollout_multiplier,
-        num_train_samples=record.num_train_samples,
-        model_type=record.model_type,
-        core_api_url=record.core_api_url,
+        timeframes=json.loads(record.timeframes),
         created_at=record.created_at,
         updated_at=record.updated_at,
     )
@@ -90,12 +74,6 @@ async def get_config(
         sensor=sensor,
         axis=axis,
         timeframes=timeframes,
-        input_horizon=record.input_horizon,
-        output_horizon=record.output_horizon,
-        rollout_multiplier=record.rollout_multiplier,
-        num_train_samples=record.num_train_samples,
-        model_type=record.model_type,
-        core_api_url=record.core_api_url,
         created_at=record.created_at,
         updated_at=record.updated_at,
     )
@@ -151,12 +129,6 @@ async def list_sensors(session: AsyncSession = Depends(get_session)):
                 sensor=r.sensor,
                 axis=r.axis,
                 timeframes=tfs,
-                input_horizon=r.input_horizon,
-                output_horizon=r.output_horizon,
-                rollout_multiplier=r.rollout_multiplier,
-                num_train_samples=r.num_train_samples,
-                model_type=r.model_type,
-                core_api_url=r.core_api_url,
                 created_at=r.created_at,
                 updated_at=r.updated_at,
             )

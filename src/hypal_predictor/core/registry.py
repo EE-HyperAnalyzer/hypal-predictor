@@ -5,7 +5,8 @@ import logging
 from hypal_utils.sensor_data import SensorData
 from redis.asyncio import Redis
 
-from hypal_predictor.core.buffer import TimeframeBuffer
+from hypal_predictor.core.buffer import ModelState, TimeframeBuffer
+from hypal_predictor.schemas.config import TimeframeSettings
 from hypal_predictor.timeframe import Timeframe
 
 logger = logging.getLogger(__name__)
@@ -28,15 +29,14 @@ class SensorRegistry:
         source: str,
         sensor: str,
         axis: str,
-        timeframes: list[str],
-        num_train_samples: int,
+        timeframe_settings: dict[str, TimeframeSettings],
     ) -> list[TimeframeBuffer]:
         """
         Регистрирует или обновляет буферы для сенсора.
         Возвращает список созданных/существующих буферов.
         """
         buffers: list[TimeframeBuffer] = []
-        for tf_str in timeframes:
+        for tf_str, settings in timeframe_settings.items():
             key = (source, sensor, axis, tf_str)
             if key not in self._buffers:
                 buf = TimeframeBuffer(
@@ -45,7 +45,7 @@ class SensorRegistry:
                     sensor=sensor,
                     axis=axis,
                     timeframe=Timeframe.from_str(tf_str),
-                    num_train_samples=num_train_samples,
+                    settings=settings,
                 )
                 self._buffers[key] = buf
                 logger.info("Registered buffer: %s", key)
@@ -100,6 +100,11 @@ class SensorRegistry:
             return
 
         for tf_str, buf in matching_buffers:
+            state = await buf.get_state()
+            if state == ModelState.GATHERING and await buf.is_ready_to_train():
+                await self._launch_training(buf, tf_str, train_model)
+                continue
+
             aggregated = await buf.push_raw(data)
             if aggregated is None:
                 continue
@@ -122,6 +127,10 @@ class SensorRegistry:
             sensor=buf.sensor,
             axis=buf.axis,
             timeframe=tf_str,
+            input_horizon=buf.input_horizon,
+            output_horizon=buf.output_horizon,
+            rollout_multiplier=buf.rollout_multiplier,
+            model_type=buf.model_type,
             candles_json=candles_json,
         )
         await buf.mark_training(task_id=result.id)

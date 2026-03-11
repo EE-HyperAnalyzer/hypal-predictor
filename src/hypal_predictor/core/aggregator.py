@@ -27,23 +27,31 @@ class CandleAggregator:
         """
         Принимает новую сырую свечу.
         Возвращает агрегированную SensorData, если текущее окно завершилось, иначе None.
+
+        Окна привязаны к фиксированным бакетам таймфрейма:
+        - 1:m  → timestamp в диапазоне [N*60, (N+1)*60)
+        - 5:m  → timestamp в диапазоне [N*300, (N+1)*300)
+        и т.д.
+
+        Это важно, чтобы агрегация не начиналась с «первой увиденной свечи»,
+        а была синхронизирована с реальными границами таймфрейма.
         """
         tf_sec = self.timeframe.as_seconds()
+        bucket_start = (data.timestamp // tf_sec) * tf_sec
 
         if self._window_start is None:
-            self._window_start = data.timestamp
+            self._window_start = bucket_start
             self._candles_in_window = [data]
             return None
 
-        if data.timestamp < self._window_start + tf_sec:
-            # Свеча принадлежит текущему окну
+        if bucket_start == self._window_start:
+            # Свеча принадлежит текущему бакету таймфрейма
             self._candles_in_window.append(data)
             return None
 
-        # Текущее окно завершилось — финализируем
+        # Бакет сменился — финализируем предыдущий и начинаем новый
         result = self._finalize()
-        # Начинаем новое окно с текущей свечой
-        self._window_start = data.timestamp
+        self._window_start = bucket_start
         self._candles_in_window = [data]
         return result
 

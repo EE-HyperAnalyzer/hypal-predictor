@@ -38,6 +38,9 @@ async def upsert(
 ) -> SensorConfig:
     now = datetime.now(tz=timezone.utc).replace(tzinfo=None)
 
+    fields.pop("created_at", None)
+    fields.pop("updated_at", None)
+
     config = await get(session, source, sensor, axis)
 
     if config is None:

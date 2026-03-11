@@ -14,6 +14,7 @@ def create_model(
     model_type: str,
     input_horizon: int,
     output_horizon: int,
+    train_size: float = 0.8,
 ) -> PredictorBaseModel:
     """
     Создаёт и возвращает экземпляр модели по строковому идентификатору.
@@ -22,6 +23,7 @@ def create_model(
         model_type: Идентификатор модели. Допустимые значения: "linear", "catboost", "transformer".
         input_horizon: Длина входного окна (количество свечей на вход).
         output_horizon: Длина выходного горизонта (количество свечей на выход).
+        train_size: Доля выборки, используемая для train split.
 
     Returns:
         Новый (необученный) экземпляр соответствующей модели.
@@ -32,7 +34,11 @@ def create_model(
     cls = _MODEL_REGISTRY.get(model_type)
     if cls is None:
         raise ValueError(f"Unknown model_type={model_type!r}. Available: {list(_MODEL_REGISTRY)}")
-    return cls(input_horizon=input_horizon, output_horizon=output_horizon)
+    return cls(
+        input_horizon=input_horizon,
+        output_horizon=output_horizon,
+        train_size=train_size,
+    )
 
 
 def available_model_types() -> list[str]:

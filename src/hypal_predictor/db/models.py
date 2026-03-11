@@ -17,12 +17,6 @@ class SensorConfig(Base):
     axis: Mapped[str] = mapped_column(String, nullable=False)
 
     timeframes: Mapped[str] = mapped_column(Text, nullable=False)
-    input_horizon: Mapped[int] = mapped_column(Integer, nullable=False)
-    output_horizon: Mapped[int] = mapped_column(Integer, nullable=False)
-    rollout_multiplier: Mapped[int] = mapped_column(Integer, nullable=False)
-    num_train_samples: Mapped[int] = mapped_column(Integer, nullable=False)
-    model_type: Mapped[str] = mapped_column(String, nullable=False)
-    core_api_url: Mapped[Optional[str]] = mapped_column(String, nullable=True)
 
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)

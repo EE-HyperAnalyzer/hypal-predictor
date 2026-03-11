@@ -19,6 +19,11 @@ class Settings(BaseSettings):
     model_idle_timeout_s: int = 3600
 
     default_model_type: str = "linear"
+    autodiscovery_timeframes: list[str] = ["1:m"]
+    autodiscovery_input_horizon: int = 10
+    autodiscovery_output_horizon: int = 1
+    autodiscovery_rollout_multiplier: int = 1
+    autodiscovery_num_train_samples: int = 100
 
     log_level: str = "INFO"
 

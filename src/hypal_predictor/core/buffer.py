@@ -8,6 +8,7 @@ from hypal_utils.sensor_data import SensorData
 from redis.asyncio import Redis
 
 from hypal_predictor.core.aggregator import CandleAggregator
+from hypal_predictor.schemas.config import TimeframeSettings
 from hypal_predictor.timeframe import Timeframe
 
 
@@ -35,14 +36,18 @@ class TimeframeBuffer:
         sensor: str,
         axis: str,
         timeframe: Timeframe,
-        num_train_samples: int,
+        settings: TimeframeSettings,
     ):
         self.redis = redis
         self.source = source
         self.sensor = sensor
         self.axis = axis
         self.timeframe = timeframe
-        self.num_train_samples = num_train_samples
+        self.input_horizon = settings.input_horizon
+        self.output_horizon = settings.output_horizon
+        self.rollout_multiplier = settings.rollout_multiplier
+        self.num_train_samples = settings.num_train_samples
+        self.model_type = settings.model_type
         self._aggregator = CandleAggregator(timeframe=timeframe)
 
         tf_str = str(timeframe)

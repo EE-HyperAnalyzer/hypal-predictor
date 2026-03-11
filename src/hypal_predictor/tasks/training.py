@@ -25,6 +25,10 @@ def train_model(
     sensor: str,
     axis: str,
     timeframe: str,
+    input_horizon: int,
+    output_horizon: int,
+    rollout_multiplier: int,
+    model_type: str,
     candles_json: list[dict],
 ) -> dict:
     """
@@ -53,7 +57,6 @@ def train_model(
         from hypal_predictor.core.model_factory import create_model
         from hypal_predictor.core.model_store import model_store
         from hypal_predictor.db.engine import AsyncSessionLocal
-        from hypal_predictor.db.repos.sensor_config import get as get_config
         from hypal_predictor.db.repos.training_history import (
             add as add_history,
         )
@@ -62,10 +65,6 @@ def train_model(
         )
 
         async with AsyncSessionLocal() as session:
-            config = await get_config(session, source, sensor, axis)
-            if config is None:
-                raise RuntimeError(f"SensorConfig not found for {source}:{sensor}:{axis}")
-
             history = await add_history(
                 session=session,
                 source=source,
@@ -78,14 +77,14 @@ def train_model(
 
         candles = [Candle_OHLC(**c) for c in candles_json]
         model = create_model(
-            model_type=config.model_type,
-            input_horizon=config.input_horizon,
-            output_horizon=config.output_horizon,
+            model_type=model_type,
+            input_horizon=input_horizon,
+            output_horizon=output_horizon,
         )
 
         logger.info(
             "Fitting %s model for %s:%s:%s tf=%s",
-            config.model_type,
+            model_type,
             source,
             sensor,
             axis,
@@ -100,7 +99,7 @@ def train_model(
         model_path = model_store.save(source, sensor, axis, timeframe, model)
         logger.info("Model saved to %s", model_path)
 
-        mse, mae, r2 = _eval_metrics(model, candles, config.rollout_multiplier)
+        mse, mae, r2 = _eval_metrics(model, candles, rollout_multiplier)
         logger.info(
             "Metrics for %s:%s:%s tf=%s — MSE=%.6f MAE=%.6f R2=%.4f",
             source,

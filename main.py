@@ -17,6 +17,7 @@ from hypal_predictor.routes.critical_zone import router as critical_zone_router
 from hypal_predictor.routes.health import router as health_router
 from hypal_predictor.routes.sensor import router as sensor_router
 from hypal_predictor.routes.status import router as status_router
+from hypal_predictor.schemas.config import TimeframeSettings
 
 logging.basicConfig(
     level=getattr(logging, settings.log_level.upper(), logging.INFO),
@@ -49,20 +50,20 @@ async def lifespan(app: FastAPI):
 
     for cfg in configs:
         try:
-            timeframes: list[str] = json.loads(cfg.timeframes)
+            timeframe_settings_json = json.loads(cfg.timeframes)
+            timeframe_settings = {tf: TimeframeSettings(**settings) for tf, settings in timeframe_settings_json.items()}
             registry.register(
                 source=cfg.source,
                 sensor=cfg.sensor,
                 axis=cfg.axis,
-                timeframes=timeframes,
-                num_train_samples=cfg.num_train_samples,
+                timeframe_settings=timeframe_settings,
             )
             logger.info(
                 "Restored sensor %s:%s:%s with timeframes %s",
                 cfg.source,
                 cfg.sensor,
                 cfg.axis,
-                timeframes,
+                list(timeframe_settings.keys()),
             )
         except Exception:
             logger.exception(
