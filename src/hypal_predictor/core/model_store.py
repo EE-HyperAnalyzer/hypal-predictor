@@ -15,18 +15,6 @@ logger = logging.getLogger(__name__)
 
 
 class ModelStore:
-    """
-    LRU-кеш обученных моделей в памяти с персистентностью на диск.
-
-    Ключ кеша: (source, sensor, axis, timeframe_str).
-    При переполнении кеша (> max_loaded) вытесняет наименее недавно
-    использованную модель — она остаётся на диске и может быть перезагружена.
-
-    Стратегия сериализации:
-    - TorchCompatibleModel → torch.save / torch.load
-    - Всё остальное       → joblib.dump / joblib.load
-    """
-
     def __init__(
         self,
         models_dir: str | None = None,

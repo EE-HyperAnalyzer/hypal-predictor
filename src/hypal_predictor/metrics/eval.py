@@ -1,8 +1,8 @@
 import numpy as np
 from hypal_utils.candles import Candle_OHLC
+from hypal_utils.critical_zone.rule import ZoneRule
 from sklearn.metrics import classification_report, mean_absolute_error, mean_squared_error, r2_score
 
-from hypal_predictor.critical_zone import ZoneRule
 from hypal_predictor.metrics.metrics import ClassificationMetrics, Metrics, RegressionMetrics
 from hypal_predictor.model import BaseModel
 from hypal_predictor.utils import candle_to_array, create_sequences

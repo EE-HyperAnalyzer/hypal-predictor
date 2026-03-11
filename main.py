@@ -9,7 +9,6 @@ from hypal_predictor import HOST_ADDRESS, HOST_PORT
 from hypal_predictor.config import settings
 from hypal_predictor.core.predictor import PredictorEngine
 from hypal_predictor.core.registry import init_registry
-from hypal_predictor.core.signal_aggregator import SignalAggregator
 from hypal_predictor.db.engine import AsyncSessionLocal, init_db
 from hypal_predictor.db.repos.sensor_config import get_all as get_all_sensors
 from hypal_predictor.routes.candle import router as candle_router
@@ -41,7 +40,6 @@ async def lifespan(app: FastAPI):
     # ── 3. Core services ───────────────────────────────────────────────────
     registry = init_registry(redis)
     app.state.predictor = PredictorEngine(redis=redis)
-    app.state.signal_aggregator = SignalAggregator(redis=redis)
 
     # ── 4. Restore sensor configs from DB ──────────────────────────────────
     logger.info("Restoring sensor configurations from DB…")

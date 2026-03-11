@@ -30,13 +30,8 @@ class PredictorEngine:
         timeframe: str,
         model: PredictorBaseModel,
         rollout_multiplier: int,
-        critical_zone: ZoneRule | None,
+        critical_zone: ZoneRule,
     ) -> tuple[list[Candle_OHLC], bool]:
-        """
-        Возвращает (predicted_candles, is_critical).
-        is_critical = True если хотя бы одна предсказанная свеча попала в critical_zone.
-        Если critical_zone is None — is_critical = False.
-        """
         buf_key = f"buf:tf:{source}:{sensor}:{axis}:{timeframe}"
         raw = await self.redis.lrange(buf_key, -model.input_horizon, -1)  # type: ignore[not-awaitable]
 

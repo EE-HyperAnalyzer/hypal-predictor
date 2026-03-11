@@ -2,40 +2,16 @@ from dataclasses import dataclass, field
 
 from hypal_utils.candles import Candle_OHLC
 from hypal_utils.sensor_data import SensorData
-
-from hypal_predictor.timeframe import Timeframe
+from hypal_utils.timeframe import Timeframe
 
 
 @dataclass
 class CandleAggregator:
-    """
-    Накапливает сырые свечи и выдаёт агрегированные свечи таймфрейма.
-
-    Принцип работы:
-    - Каждая входящая SensorData имеет timestamp (unix seconds).
-    - Свечи группируются в окна размером timeframe.as_seconds().
-    - Когда приходит свеча с timestamp >= window_start + tf_seconds,
-      текущее окно финализируется и возвращается как агрегированная SensorData.
-    - Не хранит данные о source/sensor/axis — это ответственность вызывающей стороны.
-    """
-
     timeframe: Timeframe
     _window_start: int | None = field(default=None)
     _candles_in_window: list[SensorData] = field(default_factory=list)
 
     def push(self, data: SensorData) -> SensorData | None:
-        """
-        Принимает новую сырую свечу.
-        Возвращает агрегированную SensorData, если текущее окно завершилось, иначе None.
-
-        Окна привязаны к фиксированным бакетам таймфрейма:
-        - 1:m  → timestamp в диапазоне [N*60, (N+1)*60)
-        - 5:m  → timestamp в диапазоне [N*300, (N+1)*300)
-        и т.д.
-
-        Это важно, чтобы агрегация не начиналась с «первой увиденной свечи»,
-        а была синхронизирована с реальными границами таймфрейма.
-        """
         tf_sec = self.timeframe.as_seconds()
         bucket_start = (data.timestamp // tf_sec) * tf_sec
 
@@ -45,18 +21,15 @@ class CandleAggregator:
             return None
 
         if bucket_start == self._window_start:
-            # Свеча принадлежит текущему бакету таймфрейма
             self._candles_in_window.append(data)
             return None
 
-        # Бакет сменился — финализируем предыдущий и начинаем новый
         result = self._finalize()
         self._window_start = bucket_start
         self._candles_in_window = [data]
         return result
 
     def flush(self) -> SensorData | None:
-        """Принудительно финализировать текущее окно (если есть данные)."""
         if not self._candles_in_window:
             return None
         return self._finalize()

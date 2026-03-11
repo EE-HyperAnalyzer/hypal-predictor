@@ -2,14 +2,14 @@ import json
 import logging
 
 from fastapi import APIRouter, Depends, HTTPException
+from hypal_utils.timeframe import Timeframe
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from hypal_predictor.core.model_store import model_store
 from hypal_predictor.core.registry import get_registry
 from hypal_predictor.db.engine import get_session
 from hypal_predictor.db.repos import sensor_config as sc_repo
-from hypal_predictor.schemas.config import SensorConfigRequest, SensorConfigResponse
-from hypal_predictor.timeframe import Timeframe
+from hypal_predictor.schemas.config import SensorConfigRequest, SensorConfigResponse, TimeframeSettings
 
 router = APIRouter(prefix="/sensor", tags=["Sensor"])
 logger = logging.getLogger(__name__)
@@ -69,6 +69,8 @@ async def get_config(
         raise HTTPException(404, f"Sensor {source}:{sensor}:{axis} not found")
 
     timeframes = json.loads(record.timeframes)
+    if isinstance(timeframes, list):
+        timeframes = {}
     return SensorConfigResponse(
         source=source,
         sensor=sensor,
@@ -123,6 +125,8 @@ async def list_sensors(session: AsyncSession = Depends(get_session)):
     result = []
     for r in records:
         tfs = json.loads(r.timeframes)
+        if isinstance(tfs, list):
+            tfs = {}
         result.append(
             SensorConfigResponse(
                 source=r.source,
@@ -134,3 +138,96 @@ async def list_sensors(session: AsyncSession = Depends(get_session)):
             )
         )
     return result
+
+
+@router.post("/{source}/{sensor}/{axis}/timeframe/{tf}", response_model=SensorConfigResponse)
+async def add_timeframe(
+    source: str,
+    sensor: str,
+    axis: str,
+    tf: str,
+    body: TimeframeSettings,
+    session: AsyncSession = Depends(get_session),
+):
+    """Добавляет таймфрейм к существующему сенсору."""
+    try:
+        Timeframe.from_str(tf)
+    except Exception:
+        raise HTTPException(status_code=422, detail=f"Invalid timeframe: {tf!r}")
+
+    record = await sc_repo.get(session, source, sensor, axis)
+    if record is None:
+        raise HTTPException(404, detail=f"Sensor {source}:{sensor}:{axis} not found")
+
+    current_tfs = json.loads(record.timeframes)
+    if not isinstance(current_tfs, dict):
+        current_tfs = {}
+
+    if tf in current_tfs:
+        raise HTTPException(409, detail=f"Timeframe {tf} already exists for this sensor")
+
+    current_tfs[tf] = body.model_dump()
+
+    updated_record = await sc_repo.upsert(
+        session=session,
+        source=source,
+        sensor=sensor,
+        axis=axis,
+        timeframes=json.dumps(current_tfs),
+    )
+
+    registry = get_registry()
+    registry.register(
+        source=source,
+        sensor=sensor,
+        axis=axis,
+        timeframe_settings={tf: body},
+    )
+
+    return SensorConfigResponse(
+        source=source,
+        sensor=sensor,
+        axis=axis,
+        timeframes=current_tfs,
+        created_at=updated_record.created_at,
+        updated_at=updated_record.updated_at,
+    )
+
+
+@router.delete("/{source}/{sensor}/{axis}/timeframe/{tf}", status_code=204)
+async def remove_timeframe(
+    source: str,
+    sensor: str,
+    axis: str,
+    tf: str,
+    session: AsyncSession = Depends(get_session),
+):
+    """Удаляет таймфрейм из сенсора."""
+    record = await sc_repo.get(session, source, sensor, axis)
+    if record is None:
+        raise HTTPException(404, detail=f"Sensor {source}:{sensor}:{axis} not found")
+
+    current_tfs = json.loads(record.timeframes)
+    if not isinstance(current_tfs, dict):
+        current_tfs = {}
+
+    if tf not in current_tfs:
+        raise HTTPException(404, detail=f"Timeframe {tf} not found for this sensor")
+
+    del current_tfs[tf]
+
+    model_store.delete(source, sensor, axis, tf)
+    registry = get_registry()
+    registry.remove_timeframe(source, sensor, axis, tf)
+
+    if current_tfs:
+        await sc_repo.upsert(
+            session=session,
+            source=source,
+            sensor=sensor,
+            axis=axis,
+            timeframes=json.dumps(current_tfs),
+        )
+    else:
+        await sc_repo.delete(session, source, sensor, axis)
+        registry.remove(source, sensor, axis)

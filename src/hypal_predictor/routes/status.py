@@ -1,3 +1,4 @@
+import json
 import logging
 
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -25,6 +26,7 @@ async def get_status(
     if config is None:
         raise HTTPException(404, f"Sensor {source}:{sensor}:{axis} not found")
 
+    timeframes = json.loads(config.timeframes)
     registry = get_registry()
     timeframe_statuses: dict[str, TimeframeStatus] = {}
 
@@ -40,7 +42,7 @@ async def get_status(
         timeframe_statuses[tf_str] = TimeframeStatus(
             state=state,
             candles_gathered=count,
-            num_train_samples=config.num_train_samples,
+            num_train_samples=timeframes[tf_str]["num_train_samples"],
             last_trained_at=latest.finished_at if latest else None,
             is_in_critical_zone=False,
             metrics=metrics,

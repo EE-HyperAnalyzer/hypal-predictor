@@ -5,11 +5,11 @@ from enum import Enum
 
 from hypal_utils.candles import Candle_OHLC
 from hypal_utils.sensor_data import SensorData
+from hypal_utils.timeframe import Timeframe
 from redis.asyncio import Redis
 
 from hypal_predictor.core.aggregator import CandleAggregator
 from hypal_predictor.schemas.config import TimeframeSettings
-from hypal_predictor.timeframe import Timeframe
 
 
 class ModelState(str, Enum):
@@ -20,15 +20,6 @@ class ModelState(str, Enum):
 
 
 class TimeframeBuffer:
-    """
-    Управляет состоянием модели для конкретной тройки (source, sensor, axis)
-    на конкретном таймфрейме. Хранит состояние и буфер свечей в Redis.
-
-    Redis-ключи:
-      state:{source}:{sensor}:{axis}:{tf}  → Hash
-      buf:tf:{source}:{sensor}:{axis}:{tf} → List (JSON-свечи)
-    """
-
     def __init__(
         self,
         redis: Redis,

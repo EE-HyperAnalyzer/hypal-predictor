@@ -1,4 +1,3 @@
-import asyncio
 import json
 import logging
 import time
@@ -7,36 +6,15 @@ from fastapi import APIRouter, Request, WebSocket, WebSocketDisconnect
 from hypal_utils.sensor_data import SensorData
 from pydantic import ValidationError
 
-from hypal_predictor.config import settings
 from hypal_predictor.core.buffer import ModelState
 from hypal_predictor.core.model_store import model_store
 from hypal_predictor.core.registry import get_registry
 from hypal_predictor.db.engine import AsyncSessionLocal
 from hypal_predictor.db.repos.sensor_config import get as get_sensor_config
 from hypal_predictor.db.repos.sensor_config import upsert as upsert_sensor_config
-from hypal_predictor.schemas.candle import CandleIngestRequest, CandleIngestResponse
 
 router = APIRouter(prefix="/candle", tags=["Candle"])
 logger = logging.getLogger(__name__)
-
-
-@router.post("/ingest", response_model=CandleIngestResponse)
-async def ingest_candles(request: Request, body: CandleIngestRequest):
-    """
-    Принимает батч SensorData и раздаёт по буферам.
-    После каждой агрегированной свечи запускает предсказание если модель READY.
-    """
-    registry = get_registry()
-
-    async def process_one(data: SensorData):
-        should_process = await _ensure_sensor_config(data)
-        if not should_process:
-            return
-        await registry.consume(data)
-        await _maybe_predict(request, data.source, data.sensor, data.axis)
-
-    await asyncio.gather(*[process_one(d) for d in body.candles])
-    return CandleIngestResponse(received=len(body.candles))
 
 
 @router.websocket("/ws")
@@ -105,12 +83,7 @@ async def _ensure_sensor_config(data: SensorData) -> bool:
                 source=data.source,
                 sensor=data.sensor,
                 axis=data.axis,
-                timeframes=json.dumps([]),
-                input_horizon=settings.autodiscovery_input_horizon,
-                output_horizon=settings.autodiscovery_output_horizon,
-                rollout_multiplier=settings.autodiscovery_rollout_multiplier,
-                num_train_samples=settings.autodiscovery_num_train_samples,
-                model_type=settings.default_model_type,
+                timeframes=json.dumps({}),
             )
             logger.info(
                 "Auto-created WAITING placeholder config for %s:%s:%s",
@@ -130,13 +103,7 @@ async def _ensure_sensor_config(data: SensorData) -> bool:
             )
             return False
 
-        registry.register(
-            source=data.source,
-            sensor=data.sensor,
-            axis=data.axis,
-            timeframes=timeframes,
-            num_train_samples=record.num_train_samples,
-        )
+        registry.register(source=data.source, sensor=data.sensor, axis=data.axis, timeframe_settings=timeframes)
         return True
 
 
@@ -159,6 +126,8 @@ async def _maybe_predict(connection: Request | WebSocket, source: str, sensor: s
         config = await get_config(session, source, sensor, axis)
         if config is None:
             return
+
+        timeframes = json.loads(config.timeframes)
 
         cz_record = await get_cz(session, source, sensor, axis)
         critical_zone = None
@@ -183,7 +152,7 @@ async def _maybe_predict(connection: Request | WebSocket, source: str, sensor: s
             axis=axis,
             timeframe=tf_str,
             model=model,
-            rollout_multiplier=config.rollout_multiplier,
+            rollout_multiplier=timeframes[tf_str]["rollout_multiplier"],
             critical_zone=critical_zone,
         )
         per_tf_signals[tf_str] = is_critical
@@ -255,12 +224,12 @@ async def _build_ws_status_response(
         elif state == ModelState.GATHERING:
             gathered_count = await buf.get_gathered_count()
             progress_percent = 0.0
-            if config.num_train_samples > 0:
-                progress_percent = min(100.0, round(gathered_count / config.num_train_samples * 100, 2))
+            if timeframes[tf_str]["num_train_samples"] > 0:
+                progress_percent = min(100.0, round(gathered_count / timeframes[tf_str]["num_train_samples"] * 100, 2))
             result[tf_str] = {
                 "status": state.value,
                 "gathered_count": gathered_count,
-                "num_train_samples": config.num_train_samples,
+                "num_train_samples": timeframes[tf_str]["num_train_samples"],
                 "progress_percent": progress_percent,
             }
         else:

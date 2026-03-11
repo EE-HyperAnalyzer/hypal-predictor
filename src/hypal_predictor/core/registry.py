@@ -3,11 +3,11 @@ from __future__ import annotations
 import logging
 
 from hypal_utils.sensor_data import SensorData
+from hypal_utils.timeframe import Timeframe
 from redis.asyncio import Redis
 
 from hypal_predictor.core.buffer import ModelState, TimeframeBuffer
 from hypal_predictor.schemas.config import TimeframeSettings
-from hypal_predictor.timeframe import Timeframe
 
 logger = logging.getLogger(__name__)
 
@@ -142,6 +142,12 @@ class SensorRegistry:
             tf_str,
             result.id,
         )
+
+    def remove_timeframe(self, source: str, sensor: str, axis: str, timeframe: str) -> None:
+        """Удаляет буфер для конкретного таймфрейма сенсора из реестра (Redis-ключи остаются)."""
+        key = (source, sensor, axis, timeframe)
+        self._buffers.pop(key, None)
+        logger.info("Removed timeframe %s for sensor %s:%s:%s from registry", timeframe, source, sensor, axis)
 
 
 # ---------------------------------------------------------------------------

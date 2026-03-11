@@ -8,9 +8,8 @@ import pandas as pd
 import plotly.graph_objects as go
 from hypal_utils.candles import Candle_OHLC
 from hypal_utils.sensor_data import SensorData
+from hypal_utils.timeframe import Timeframe
 from tqdm import tqdm
-
-from hypal_predictor.timeframe import Timeframe
 
 
 @dataclass
@@ -278,6 +277,17 @@ class Databag2:
         for d in tqdm(data):
             dbag.add(d)
         return dbag
+
+    @classmethod
+    def from_dbag(cls, dbag: Databag) -> "Databag2":
+        res = cls()
+        for source in dbag.get_source_names():
+            for sensor in dbag.get_sensor_names(source):
+                for axis in dbag.get_axis_names(source, sensor):
+                    data = dbag.get_data(source, sensor, axis)
+                    for d in data:
+                        res.add(d)
+        return res
 
     @staticmethod
     def _aggregate_data_with_timeframe(data: list[SensorData], timeframe: Timeframe) -> list[SensorData]:

@@ -25,7 +25,6 @@ async def set_critical_zone(
     body: CriticalZoneRuleDTO,
     session: AsyncSession = Depends(get_session),
 ):
-    """Устанавливает или обновляет правило критической зоны для сенсора."""
     config = await sc_repo.get(session, source, sensor, axis)
     if config is None:
         raise HTTPException(
