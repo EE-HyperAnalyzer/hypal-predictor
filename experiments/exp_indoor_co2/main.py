@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from hypal_utils.critical_zone.rule import ZoneRule_AND, ZoneRule_GREATER, ZoneRule_LESS, ZoneRule_NOT
+from hypal_utils.critical_zone.rule import ZoneRule_GREATER
 
 from hypal_predictor.experiment import run_experiment
 from hypal_predictor.model import BaseModel

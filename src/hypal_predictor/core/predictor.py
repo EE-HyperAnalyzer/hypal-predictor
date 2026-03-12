@@ -2,9 +2,9 @@ import json
 import logging
 
 from hypal_utils.candles import Candle_OHLC
+from hypal_utils.critical_zone.rule import ZoneRule
 from redis.asyncio import Redis
 
-from hypal_predictor.critical_zone import ZoneRule
 from hypal_predictor.model.base import BaseModel as PredictorBaseModel
 
 logger = logging.getLogger(__name__)

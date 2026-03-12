@@ -112,7 +112,6 @@ async def _maybe_predict(connection: Request | WebSocket, source: str, sensor: s
     from hypal_predictor.db.engine import AsyncSessionLocal
     from hypal_predictor.db.repos.critical_zone import get as get_cz
     from hypal_predictor.db.repos.sensor_config import get as get_config
-    from hypal_predictor.schemas.critical_zone import rule_from_json
 
     predictor = connection.app.state.predictor
     signal_agg = connection.app.state.signal_aggregator
@@ -133,7 +132,7 @@ async def _maybe_predict(connection: Request | WebSocket, source: str, sensor: s
         critical_zone = None
         if cz_record:
             try:
-                critical_zone = rule_from_json(cz_record.rule_json)
+                critical_zone = cz_record.rule_json
             except Exception:
                 pass
 

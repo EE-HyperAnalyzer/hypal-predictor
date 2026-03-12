@@ -8,9 +8,6 @@ from hypal_predictor.db.repos import critical_zone as cz_repo
 from hypal_predictor.db.repos import sensor_config as sc_repo
 from hypal_predictor.schemas.critical_zone import (
     CriticalZoneRuleDTO,
-    parse_rule,
-    rule_from_json,
-    rule_to_json,
 )
 
 router = APIRouter(prefix="/sensor", tags=["CriticalZone"])
@@ -32,7 +29,7 @@ async def set_critical_zone(
             detail=f"Sensor {source}:{sensor}:{axis} not found",
         )
 
-    rule_json = rule_to_json(parse_rule(body))
+    rule_json = body.model_dump_json()
     await cz_repo.upsert(session, source, sensor, axis, rule_json)
     return {"status": "ok", "rule": body}
 
@@ -51,5 +48,4 @@ async def get_critical_zone(
             status_code=404,
             detail=f"No critical zone rule for {source}:{sensor}:{axis}",
         )
-    dto = rule_from_json(record.rule_json)
-    return {"rule": dto}
+    return {"rule": record.rule_json}
