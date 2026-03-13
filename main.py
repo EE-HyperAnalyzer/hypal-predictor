@@ -3,6 +3,7 @@ import logging
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+from hypal_utils.logger import log_error, log_exception
 from redis.asyncio import Redis
 
 from hypal_predictor import HOST_ADDRESS, HOST_PORT
@@ -64,12 +65,7 @@ async def lifespan(app: FastAPI):
                 list(timeframe_settings.keys()),
             )
         except Exception:
-            logger.exception(
-                "Failed to restore sensor %s:%s:%s",
-                cfg.source,
-                cfg.sensor,
-                cfg.axis,
-            )
+            log_error(f"Failed to restore sensor {cfg.source}:{cfg.sensor}:{cfg.axis}")
 
     logger.info("Startup complete. %d sensor(s) restored.", len(configs))
 

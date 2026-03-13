@@ -10,6 +10,7 @@ from hypal_predictor.core.registry import get_registry
 from hypal_predictor.db.engine import get_session
 from hypal_predictor.db.repos import sensor_config as sc_repo
 from hypal_predictor.schemas.config import SensorConfigRequest, SensorConfigResponse, TimeframeSettings
+from hypal_predictor.schemas.status import TimeframeStatus
 
 router = APIRouter(prefix="/sensor", tags=["Sensor"])
 logger = logging.getLogger(__name__)
@@ -140,18 +141,17 @@ async def list_sensors(session: AsyncSession = Depends(get_session)):
     return result
 
 
-@router.post("/{source}/{sensor}/{axis}/timeframe/{tf}", response_model=SensorConfigResponse)
+@router.post("/{source}/{sensor}/{axis}/timeframe/{timeframe}", response_model=SensorConfigResponse)
 async def add_timeframe(
     source: str,
     sensor: str,
     axis: str,
-    tf: str,
+    timeframe: str,
     body: TimeframeSettings,
     session: AsyncSession = Depends(get_session),
 ):
-    """Добавляет таймфрейм к существующему сенсору."""
     try:
-        Timeframe.from_str(tf)
+        tf = Timeframe.from_str(timeframe)
     except Exception:
         raise HTTPException(status_code=422, detail=f"Invalid timeframe: {tf!r}")
 
@@ -163,10 +163,10 @@ async def add_timeframe(
     if not isinstance(current_tfs, dict):
         current_tfs = {}
 
-    if tf in current_tfs:
+    if timeframe in current_tfs:
         raise HTTPException(409, detail=f"Timeframe {tf} already exists for this sensor")
 
-    current_tfs[tf] = body.model_dump()
+    current_tfs[timeframe] = body.model_dump()
 
     updated_record = await sc_repo.upsert(
         session=session,
@@ -181,7 +181,7 @@ async def add_timeframe(
         source=source,
         sensor=sensor,
         axis=axis,
-        timeframe_settings={tf: body},
+        timeframe_settings={str(tf): body},
     )
 
     return SensorConfigResponse(
@@ -194,12 +194,12 @@ async def add_timeframe(
     )
 
 
-@router.delete("/{source}/{sensor}/{axis}/timeframe/{tf}", status_code=204)
+@router.delete("/{source}/{sensor}/{axis}/timeframe/{timeframe}", status_code=204)
 async def remove_timeframe(
     source: str,
     sensor: str,
     axis: str,
-    tf: str,
+    timeframe: str,
     session: AsyncSession = Depends(get_session),
 ):
     """Удаляет таймфрейм из сенсора."""
@@ -211,14 +211,14 @@ async def remove_timeframe(
     if not isinstance(current_tfs, dict):
         current_tfs = {}
 
-    if tf not in current_tfs:
-        raise HTTPException(404, detail=f"Timeframe {tf} not found for this sensor")
+    if timeframe not in current_tfs:
+        raise HTTPException(404, detail=f"Timeframe {timeframe} not found for this sensor")
 
-    del current_tfs[tf]
+    del current_tfs[timeframe]
 
-    model_store.delete(source, sensor, axis, tf)
+    model_store.delete(source, sensor, axis, timeframe)
     registry = get_registry()
-    registry.remove_timeframe(source, sensor, axis, tf)
+    registry.remove_timeframe(source, sensor, axis, timeframe)
 
     if current_tfs:
         await sc_repo.upsert(
@@ -231,3 +231,37 @@ async def remove_timeframe(
     else:
         await sc_repo.delete(session, source, sensor, axis)
         registry.remove(source, sensor, axis)
+
+
+@router.get("/{source}/{sensor}/{axis}/timeframe/{timeframe}", response_model=TimeframeStatus)
+async def get_timeframe_status(
+    source: str,
+    sensor: str,
+    axis: str,
+    timeframe: str,
+    session: AsyncSession = Depends(get_session),
+):
+    record = await sc_repo.get(session, source, sensor, axis)
+    if record is None:
+        raise HTTPException(404, detail=f"Sensor {source}:{sensor}:{axis} not found")
+
+    registry = get_registry()
+    buffer = registry.get_buffer(source, sensor, axis, timeframe)
+    if buffer is None:
+        raise HTTPException(404, detail=f"Timeframe {timeframe} for {source}:{sensor}:{axis} not found")
+
+    state = await buffer.get_state()
+    gathered_count = await buffer.get_gathered_count()
+
+    record = json.loads(record.timeframes)[timeframe]
+    return TimeframeStatus(
+        model_type=record["model_type"],
+        input_horizon=record["input_horizon"],
+        output_horizon=record["output_horizon"],
+        rollout_multiplier=record["rollout_multiplier"],
+        critical_zone=record["critical_zone"],
+        state=state,
+        candles_gathered=gathered_count,
+        num_train_samples=record["num_train_samples"],
+        is_in_critical_zone=False,
+    )

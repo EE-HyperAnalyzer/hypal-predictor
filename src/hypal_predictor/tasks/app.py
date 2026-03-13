@@ -8,7 +8,6 @@ celery_app = Celery(
     backend=settings.redis_result_url,
     include=[
         "hypal_predictor.tasks.training",
-        "hypal_predictor.tasks.notify",
     ],
 )
 
@@ -21,6 +20,5 @@ celery_app.conf.update(
     worker_concurrency=settings.max_parallel_training,
     task_routes={
         "hypal_predictor.tasks.training.*": {"queue": "training"},
-        "hypal_predictor.tasks.notify.*": {"queue": "notify"},
     },
 )

@@ -43,15 +43,15 @@ def run_experiment(
         timeframe_folder = RESULTS_PATH / f"{tf.as_seconds()}"
         timeframe_folder.mkdir(exist_ok=True, parents=True)
         aggregated_data = AxisDatabag(source=source, sensor=sensor, axis=axis)
-        for c in tqdm.tqdm(data):
+        for c in tqdm.tqdm(data, leave=False):
             aggregated_data.add(c)
 
         aggregated_data.write_html(timeframe_folder / "candlestick.html")
 
         log_info("Training models...")
-        for model_t in tqdm.tqdm(models, desc="Models"):
-            for inp_seq_len in tqdm.tqdm(inp_seq_lens, desc="Input horizon"):
-                for out_seq_len in tqdm.tqdm(out_seq_lens, desc="Outut horizon"):
+        for model_t in tqdm.tqdm(models, desc="Models", leave=False):
+            for inp_seq_len in tqdm.tqdm(inp_seq_lens, desc="Input horizon", leave=False):
+                for out_seq_len in tqdm.tqdm(out_seq_lens, desc="Outut horizon", leave=False):
                     model = model_t(
                         input_horizon=inp_seq_len,
                         output_horizon=out_seq_len,

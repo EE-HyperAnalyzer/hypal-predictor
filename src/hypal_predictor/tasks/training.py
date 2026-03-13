@@ -31,18 +31,6 @@ def train_model(
     model_type: str,
     candles_json: list[dict],
 ) -> dict:
-    """
-    Celery task: обучает модель для (source, sensor, axis, timeframe).
-
-    Порядок действий:
-    1. Читает SensorConfig из БД через async-сессию.
-    2. Создаёт экземпляр модели через create_model().
-    3. Обучает модель: model.fit(candles).
-    4. Сохраняет модель на диск через ModelStore.
-    5. Вычисляет метрики (MSE, MAE, R²) на валидационной выборке.
-    6. Финализирует запись TrainingHistory в БД.
-    7. Обновляет Redis-ключ: TRAINING → READY.
-    """
     logger.info(
         "Training started: %s:%s:%s tf=%s n_candles=%d",
         source,

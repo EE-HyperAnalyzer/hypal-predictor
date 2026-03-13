@@ -36,8 +36,8 @@ SENSOR = "accumulator"
 AXIS = "temp"
 TRAIN_SIZE = 0.8
 TIMEFRAMES = [
-    "30:s",
-    "1:h",
+    "1h",
+    "30s",
 ]
 INP_SEQ_LENS = [1, 5, 10, 15, 20]
 OUT_SEQ_LENS = [1, 5, 10, 15, 20]

@@ -1,4 +1,3 @@
-from datetime import datetime
 from typing import Optional
 
 from pydantic import BaseModel
@@ -14,12 +13,14 @@ class TimeframeMetrics(BaseModel):
 
 class TimeframeStatus(BaseModel):
     state: ModelState
+    model_type: str
+    input_horizon: int
+    output_horizon: int
+    rollout_multiplier: int
+    critical_zone: str
     candles_gathered: int
     num_train_samples: int
-    last_trained_at: Optional[datetime] = None
-    last_predicted_at: Optional[datetime] = None
-    is_in_critical_zone: bool = False
-    metrics: Optional[TimeframeMetrics] = None
+    is_in_critical_zone: bool
 
 
 class SensorStatusResponse(BaseModel):

@@ -10,6 +10,7 @@ class TimeframeSettings(BaseModel):
     rollout_multiplier: int = Field(default=1, ge=1)
     num_train_samples: int = Field(ge=10, description="Минимум агрегированных свечей для обучения")
     model_type: Literal["linear", "catboost", "transformer"] = "linear"
+    critical_zone: str = Field(description="Критическая зона в виде системы неравенств")
 
 
 class SensorConfigRequest(BaseModel):
@@ -23,6 +24,7 @@ class SensorConfigRequest(BaseModel):
                     "rollout_multiplier": 1,
                     "num_train_samples": 500,
                     "model_type": "linear",
+                    "critical_zone": "x < 5 or x > 35",
                 }
             }
         ],
